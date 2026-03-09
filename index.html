@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자기소개 게시판</title>
+    <style>
+        :root {
+            --primary-color: #00a082;
+            --bg-color: #f4f4f4;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            border-top: 5px solid var(--primary-color);
+            background: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            background-color: #eee;
+        }
+
+        .card-footer {
+            background: #4a5568;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            font-weight: bold;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 50px auto;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: #fff;
+            border-bottom: 2px solid var(--primary-color);
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .modal-body img {
+            width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            display: block;
+            background: #f9f9f9;
+        }
+
+        .info-list {
+            text-align: left;
+            padding: 20px 30px;
+            margin: 0;
+            list-style: none;
+        }
+
+        .info-list li {
+            margin-bottom: 10px;
+            font-size: 1rem;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 5px;
+        }
+
+        .info-list li b {
+            display: inline-block;
+            width: 90px;
+            color: #666;
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #333;
+            z-index: 10;
+        }
+
+        .btn-area {
+            text-align: center;
+            padding-bottom: 20px;
+        }
+
+        .close-footer {
+            background: #edf2f7;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.2rem;
+            padding: 50px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>자기소개</h1>
+</div>
+
+<div id="loading" class="loading">데이터를 불러오는 중입니다...</div>
+<div class="grid-container" id="cardGrid"></div>
+
+<div id="detailModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div class="modal-header" id="m-title"></div>
+        <div class="modal-body">
+            <img id="m-img" src="" alt="profile">
+            <ul class="info-list" id="m-info"></ul>
+        </div>
+        <div class="btn-area">
+            <button class="close-footer" onclick="closeModal()">닫기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. 설정: 발급받으신 GAS API 주소입니다.
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AY5xjrQ4QgnLfIpCwgu9CKHt4_e4W8rh53UTUscj02VDjXq6JtfTfjdTre_RUhPejNaeHY1iMvhnb9Udij9n_jlsLHc_s5noy2X6U2-eArHJ1K4_nf6KJIaaSPMMbBhIbth8mXmD9ZuJHQqgiJ3Sba57m6I873Her_i-i_xn2c7C7jhEzfzUnKFOlCY9XrCTiCw1ri3GCR7XfSZLaNeDqI-REg_Rx_qK7OU4DR5NForGn6v8t_LenQ84dB8mPfZJV7lWMeXW7fkvHRyQ5k0wRakj_-xPxXmLPA&lib=M1tG8jf9int3G6banqFxvOy9nYsBIys53"; 
+    // 위 주소는 예시이므로, 전달받으신 주소가 다르다면 해당 URL로 교체하세요. 
+    // (보내주신 링크는 리다이렉션 결과 주소라 작동 안 할 수 있으니 원본 배포 URL을 쓰시는 게 좋습니다.)
+
+    let members = [];
+    const defaultImg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mN8/x8AAuMB8DtXNjkAAAAASUVORK5CYII=";
+
+    // 2. 데이터 호출 함수
+    async function fetchMembers() {
+        const loadingEl = document.getElementById('loading');
+        try {
+            const response = await fetch(GAS_URL);
+            if (!response.ok) throw new Error('네트워크 응답 에러');
+            members = await response.json();
+            
+            loadingEl.style.display = "none";
+            renderCards();
+        } catch (error) {
+            console.error("데이터 로드 실패:", error);
+            loadingEl.innerText = "데이터 로딩에 실패했습니다. (API 설정을 확인해주세요)";
+        }
+    }
+
+    // 3. 카드 생성 함수
+    function renderCards() {
+        const cardGrid = document.getElementById('cardGrid');
+        cardGrid.innerHTML = ""; 
+
+        members.forEach((m, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => openModal(index);
+            
+            // 이미지 무한 에러 방지 처리 적용
+            card.innerHTML = `
+                <img src="${m.img || ''}" onerror="this.onerror=null; this.src='${defaultImg}';">
+                <div class="card-footer">${m.name || '이름 없음'}</div>
+            `;
+            cardGrid.appendChild(card);
+        });
+    }
+
+    // 4. 모달 열기/닫기
+    function openModal(index) {
+        const m = members[index];
+        const modal = document.getElementById('detailModal');
+        
+        document.getElementById('m-title').innerText = `${m.name || ''} ${m.role ? '- ' + m.role : ''}`;
+        document.getElementById('m-img').src = m.img || defaultImg;
+        document.getElementById('m-img').onerror = function() { this.src = defaultImg; };
+
+        // 리스트 항목 생성 (데이터가 있는 경우만 표시)
+        const fields = [
+            { label: "나이", key: "age" },
+            { label: "성별", key: "gender" },
+            { label: "직종", key: "type" },
+            { label: "분야", key: "field" },
+            { label: "MBTI", key: "mbti" },
+            { label: "지역", key: "area" },
+            { label: "취미", key: "hobby" },
+            { label: "주량", key: "drink" }
+        ];
+
+        let infoHtml = "";
+        fields.forEach(f => {
+            if (m[f.key]) {
+                infoHtml += `<li><b>${f.label} :</b> ${m[f.key]}</li>`;
+            }
+        });
+
+        document.getElementById('m-info').innerHTML = infoHtml || "<li>정보가 없습니다.</li>";
+        modal.style.display = "block";
+        document.body.style.overflow = "hidden"; // 배경 스크롤 방지
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').style.display = "none";
+        document.body.style.overflow = "auto";
+    }
+
+    // 배경 클릭 시 닫기
+    window.onclick = function(event) {
+        const modal = document.getElementById('detailModal');
+        if (event.target == modal) closeModal();
+    }
+
+    // 실행
+    fetchMembers();
+</script>
+
+</body>
+</html>
